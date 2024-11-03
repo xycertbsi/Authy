@@ -7,7 +7,7 @@ buildscript {
     }
 
     dependencies {
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.6.21")
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.7.21")
     }
 }
 
@@ -62,10 +62,27 @@ tasks {
 
     }
 
+    jar {
+        val buildnum = rootProject.file("buildnum")
+        val buildNumber = try {
+            val num = buildnum.readText().toInt() + 1
+            buildnum.writeText(num.toString())
+            num
+        } catch (e: Exception) {
+            buildnum.writeText("0")
+            0
+        }
+
+        archiveClassifier.set("${pluginVersion}-${buildNumber}")
+    }
+
     shadowJar {
         dependsOn(makeDefaults)
         relocate("org.bstats", group)
-        archiveFileName.set("${pluginName}-${pluginVersion}.jar")
+
+        val buildnum = rootProject.file("buildnum")
+        val buildNumber = buildnum.readText().toInt()
+        archiveFileName.set("${pluginName}-${pluginVersion}-${buildNumber}.jar")
     }
 
     register<ShadowJar>("shadowJarDrivers") {
