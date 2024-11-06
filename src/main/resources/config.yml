@@ -58,6 +58,7 @@ duplicateIpProtection:
 
 database: # You need to restart the server after changing these settings
   type: sqlite #mysql or sqlite
+  maxPoolSize: 10 # Raise this if you encounter errors regarding maximum pool size (in multiples of 10 to be safe)
   credentials: #Only for mysql, ignore if using sqlite
     host: 127.0.0.1:3306
     user: root

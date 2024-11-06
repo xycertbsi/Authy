@@ -1,23 +1,21 @@
 package me.iru.authy
 
+import me.iru.authy.data.AuthyPlayer
 import me.iru.authy.data.DatabaseConnection
 import net.md_5.bungee.api.ChatColor
 import org.bukkit.plugin.java.JavaPlugin
 
 
 class Authy : JavaPlugin() {
+    private val pluginName = this.description.name
+    private var initialized = false
+
     val version = this.description.version
     var latestVersion = this.version
-
-    private val pluginName = this.description.name
-
-    private val prefix: String = ChatColor.translateAlternateColorCodes('&', "&8[&6$pluginName&8]&7")
-
-    private var initialized = false
+    val prefix: String = ChatColor.translateAlternateColorCodes('&', "&8[&6$pluginName&8]&7")
 
     companion object {
         lateinit var instance: Authy private set
-        lateinit var databaseConnection: DatabaseConnection private set
     }
 
     override fun onEnable() {
@@ -42,7 +40,9 @@ class Authy : JavaPlugin() {
         config.options().copyDefaults(true)
         saveConfig()
 
-        databaseConnection = DatabaseConnection()
+        DatabaseConnection.init()
+        AuthyPlayer.init()
+        Localization.init()
 
         initialized = true
 
@@ -51,7 +51,7 @@ class Authy : JavaPlugin() {
 
     override fun onDisable() {
         if(initialized) {
-            databaseConnection.shutdown()
+            DatabaseConnection.shutdown()
 
             initialized = false
         }

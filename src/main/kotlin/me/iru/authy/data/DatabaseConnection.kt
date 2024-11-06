@@ -4,25 +4,71 @@ import me.iru.authy.Authy
 import java.io.File
 import java.sql.Connection
 import java.sql.DriverManager
+import java.sql.ResultSet
 import java.sql.SQLException
 import java.util.HashSet
 import java.util.LinkedList
 
-class DatabaseConnection {
-
+object DatabaseConnection {
     private val connections = LinkedList<Connection>()
     private val usedConnections = HashSet<Connection>()
-    private val maxPoolSize = 10
+    private var maxPoolSize = 10
     private var currentPoolSize = 0
+    private var isInitialized = false
 
-    init {
+    fun init() {
+        if(isInitialized) {
+            Authy.instance.logger.warning("Database connection already initialized!")
+            return
+        }
+
+        maxPoolSize = Authy.instance.config.getInt("database.maxPoolSize").coerceAtLeast(10)
         val type = Authy.instance.config.getString("database.type") ?: "sqlite"
         for (i in 0 until maxPoolSize) {
             connections.add(createConnection(type))
             currentPoolSize++
         }
 
+        isInitialized = true
+
         Authy.instance.logger.info("Connected to database, pool size: $currentPoolSize")
+    }
+
+    fun shutdown() {
+        if(!isInitialized) {
+            Authy.instance.logger.warning("Database connection not initialized!")
+            return
+        }
+
+        for(connection in connections) {
+            connection.close()
+        }
+        for(connection in usedConnections) {
+            connection.close()
+        }
+        connections.clear()
+        usedConnections.clear()
+        currentPoolSize = 0
+
+        Authy.instance.logger.info("All database connections closed")
+    }
+
+    fun query(query: String, vararg params: Any?): ResultSet? {
+        if(!isInitialized) {
+            Authy.instance.logger.warning("Database connection not initialized!")
+            return null
+        }
+
+        val connection = getConnection()
+        val statement = connection.prepareStatement(query)
+        for(i in params.indices) {
+            statement.setObject(i + 1, params[i])
+        }
+        val result = statement.execute()
+        statement.close()
+        releaseConnection(connection)
+
+        return if(result) statement.resultSet else null
     }
 
     private fun connectSQLite(): Connection {
@@ -74,20 +120,6 @@ class DatabaseConnection {
                 connection.close()
             }
         }
-    }
-
-    fun shutdown() {
-        for(connection in connections) {
-            connection.close()
-        }
-        for(connection in usedConnections) {
-            connection.close()
-        }
-        connections.clear()
-        usedConnections.clear()
-        currentPoolSize = 0
-
-        Authy.instance.logger.info("All database connections closed")
     }
 
     private fun createConnection(type: String): Connection {
